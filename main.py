@@ -10,11 +10,12 @@ import os
 MY_EMAIL = os.getenv("MY_EMAIL")
 PASSWORD = os.getenv("PASSWORD")
 RECIPIENTS = os.getenv("RECIPIENTS")
+URL = os.getenv("URL")
 
 
 dict = {}
 
-data = requests.get("https://api.sheety.co/da4061dde624367cbdee6809a9e76036/anderProject/sheet1")
+data = requests.get(URL)
 
 dict1 = data.json()["sheet1"]
 
@@ -46,7 +47,7 @@ for books in dict:
                             "pricePoint":int(new)
                         }
                     }
-                    response = requests.put(url=f"https://api.sheety.co/da4061dde624367cbdee6809a9e76036/anderProject/sheet1/{id}", json=data)
+                    response = requests.put(url=f"{URL}/{id}", json=data)
                     print(response.status_code)
                     with smtplib.SMTP("smtp.gmail.com") as connection:
                         connection.starttls()

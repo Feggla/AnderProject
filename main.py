@@ -16,7 +16,8 @@ URL = os.getenv("URL")
 dict = {}
 
 data = requests.get(URL)
-dict1 = data.json()["sheet1"]
+print(data.json())
+dict1 = data.json()
 
 for items in dict1:
     dict[items['bookName']] = {

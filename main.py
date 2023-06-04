@@ -4,11 +4,12 @@ import re
 import smtplib
 import time
 from datetime import datetime
+import os
 
 
-MY_EMAIL = "feggylad@gmail.com"
-PASSWORD = "sltyefjbswqlvlox"
-RECIPIENTS = ["michaelfeggans@gmail.com", "aganiatsos@gmail.com"]
+MY_EMAIL = os.getenv("MY_EMAIL")
+PASSWORD = os.getenv("PASSWORD")
+RECIPIENTS = os.getenv("RECIPIENTS")
 
 
 dict = {}

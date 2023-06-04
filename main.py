@@ -28,7 +28,7 @@ start_time = time.time()
 for books in dict:
     for items in dict[books]:
         url = items
-        page = requests.get(URL)
+        page = requests.get(url=URL)
         data = BeautifulSoup(page.content, "html.parser")
         all = data.find_all("tr", class_=['results-table-first-LogoRow has-data', "results-table-LogoRow has-data"])
         for words in all:

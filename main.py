@@ -58,4 +58,3 @@ for books in dict:
             
 print(f"Cycle completed at {datetime.now()}")
 print(f"{(time.time() - start_time)} seconds to complete")
-    # time.sleep(60)

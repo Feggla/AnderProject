@@ -16,7 +16,7 @@ URL = os.getenv("URL")
 dict = {}
 
 data = requests.get(URL)
-print(data.response)
+print(data.status_code)
 
 dict1 = data.json()["sheet1"]
 

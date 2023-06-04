@@ -16,8 +16,6 @@ URL = os.getenv("URL")
 dict = {}
 
 data = requests.get(URL)
-print(data.status_code)
-
 dict1 = data.json()["sheet1"]
 
 for items in dict1:
@@ -28,8 +26,8 @@ for items in dict1:
 start_time = time.time()
 for books in dict:
     for items in dict[books]:
-        url = items
-        page = requests.get(url=URL)
+        link = items
+        page = requests.get(link)
         data = BeautifulSoup(page.content, "html.parser")
         all = data.find_all("tr", class_=['results-table-first-LogoRow has-data', "results-table-LogoRow has-data"])
         for words in all:

@@ -8,14 +8,10 @@ import time
 from datetime import datetime
 import os
 import pygsheets
-from dotenv import load_dotenv
-
-load_dotenv()
 
 MY_EMAIL = os.getenv("MY_EMAIL")
 PASSWORD = os.getenv("PASSWORD")
-RECIPIENT1 = os.getenv("RECIPIENT1")
-RECIPIENT2 = os.getenv("RECIPIENT2")
+RECIPIENTS = os.getenv("RECIPIENTS")
 URL = os.getenv("URL")
 
 
@@ -67,7 +63,7 @@ for books in dict:
                         connection.starttls()
                         connection.login(user=MY_EMAIL, password=PASSWORD)
                         connection.sendmail(from_addr=MY_EMAIL,
-                                    to_addrs=[RECIPIENT1,RECIPIENT2],
+                                    to_addrs=RECIPIENTS,
                                     msg=f"Subject: Book Alert for {books} \n\n Ander, {books} has dropped to ${new}")
                     break
             

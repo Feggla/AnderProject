@@ -7,7 +7,6 @@ import smtplib
 import time
 from datetime import datetime
 import os
-import pandas as pd
 import pygsheets
 from dotenv import load_dotenv
 

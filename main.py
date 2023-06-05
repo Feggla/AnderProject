@@ -19,9 +19,7 @@ gc = pygsheets.authorize(service_file="./ander-project-388823-d897fb774f87.json"
 
 ws = gc.open('Ander-project')[0]
 dictlist = ws.get_all_records()
-id = 2
-new = 444
-ws.update_value(f"C{id}", new)
+
 
 
 # for items in dictlist:

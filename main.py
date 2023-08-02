@@ -9,6 +9,7 @@ from datetime import datetime
 import os
 import pygsheets
 
+
 MY_EMAIL = os.getenv("MY_EMAIL")
 PASSWORD = os.getenv("PASSWORD")
 RECIPIENTS = os.getenv("RECIPIENTS")
@@ -19,7 +20,6 @@ gc = pygsheets.authorize(service_file="./ander-project-388823-d897fb774f87.json"
 
 ws = gc.open('Ander-project')[0]
 dictlist = ws.get_all_records()
-
 
 
 # for items in dictlist:
@@ -61,7 +61,7 @@ for books in dict:
                         connection.starttls()
                         connection.login(user=MY_EMAIL, password=PASSWORD)
                         connection.sendmail(from_addr=MY_EMAIL,
-                                    to_addrs=RECIPIENTS,
+                                    to_addrs=[RECIPIENT1,RECIPIENT2],
                                     msg=f"Subject: Book Alert for {books} \n\n Ander, {books} has dropped to ${new}")
                     break
             

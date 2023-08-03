@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"math"
+	"math/rand"
 	"net/http"
 	"os"
 
@@ -88,170 +89,82 @@ var wg sync.WaitGroup
 
 func main() {
 	books := getData()
-	for ind, book := range books {
-		url := book.SearchURL
-		c := colly.NewCollector()
-		c.SetRequestTimeout(30 * time.Second)
-		c.OnRequest(func(r *colly.Request) {
-			fmt.Println("Visiting", r.URL)
-		})
+	var wg sync.WaitGroup
+	results := make(chan Book, len(books))
 
-		c.OnHTML("tbody", func(e *colly.HTMLElement) {
-			// fmt.Println(e.ChildText("td.item-note"))
-			e.ForEach("tr", func(i int, h *colly.HTMLElement) {
-				desc := strings.ToLower(h.ChildText("td.item-note"))
-				if !strings.Contains(desc, "fair") {
-					price := h.ChildText("span.results-price a")
-					price = strings.ReplaceAll(price, "A$", "")
-					price = strings.ReplaceAll(price, ",", "")
-					num, _ := strconv.ParseFloat(price, 64)
-					fmt.Println(num)
-					newnum := int(math.Ceil(num))
-					fmt.Println(newnum)
-					if newnum != 0 && newnum <= books[ind].PricePoint || books[ind].OnlinePrice == 0 {
-						books[ind].PricePoint = newnum
-						books[ind].OnlinePrice = newnum
+	for _, book := range books {
+		wg.Add(1)
+		bookCopy := book
+		go scrapeBookData(&wg, bookCopy, results)
+	}
 
-					}
-				}
-			})
-		})
-		if err := c.Visit(url); err != nil {
-			fmt.Println("Error:", err)
-		}
-		c.Wait()
-		fmt.Println(books[ind].OnlinePrice)
-		fmt.Println(books[ind].Name)
+	wg.Wait()
+	close(results)
+
+	for book := range results {
+		fmt.Println(book.OnlinePrice)
+		fmt.Println(book.Name)
 	}
 }
 
-// 	for ind, book := range books {
-// 		url := book.SearchURL
-// // 		c := colly.NewCollector()
-// 		c.SetRequestTimeout(30 * time.Second)
-// 		// c.OnRequest(func(r *colly.Request) {
-// 		// 	fmt.Println("Visiting", r.URL)
-// 		// })
+func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book) {
+	defer wg.Done()
+	userAgents := []string{
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:87.0) Gecko/20100101 Firefox/87.0",
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Version/14.0.3 Safari/537.36",
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Version/14.0.3 Safari/537.36",
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Version/13.1.2 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.66",
+		// Add more user agents as needed
+	}
+	rand.Seed(time.Now().UnixNano())
 
-// 		c.OnHTML("tbody", func(e *colly.HTMLElement) {
-// 			// fmt.Println(e.ChildText("td.item-note"))
-// 			e.ForEach("tr", func(i int, h *colly.HTMLElement) {
-// 				desc := strings.ToLower(h.ChildText("td.item-note"))
-// 				if !strings.Contains(desc, "fair") {
-// 					price := h.ChildText("span.results-price a")
-// 					price = strings.ReplaceAll(price, "A$", "")
-// 					price = strings.ReplaceAll(price, ",", "")
-// 					num, _ := strconv.ParseFloat(price, 64)
-// 					newnum := int(math.Ceil(num))
-// 					fmt.Println(newnum)
-// if newnum != 0 && newnum <= books[ind].PricePoint || books[ind].OnlinePrice == 0 {
-// 	books[ind].PricePoint = newnum
-// 	books[ind].OnlinePrice = newnum
+	url := book.SearchURL
+	c := colly.NewCollector()
+	randomUserAgent := userAgents[rand.Intn(len(userAgents))]
+	c.SetRequestTimeout(30 * time.Second)
+	c.OnRequest(func(r *colly.Request) {
+		fmt.Println("Visiting", r.URL)
+		r.Headers.Set("User-Agent", randomUserAgent)
+	})
 
-// }
-// 				}
-// 			})
-// 			fmt.Println(books[ind].OnlinePrice)
-// 			fmt.Println(books[ind].Name)
-// 		})
-// 		if err := c.Visit(url); err != nil {
-// 			fmt.Println("Error:", err)
-// 		}
+	c.OnHTML("tbody", func(e *colly.HTMLElement) {
+		// fmt.Println(e.ChildText("td.item-note"))
+		e.ForEach("tr", func(i int, h *colly.HTMLElement) {
+			desc := strings.ToLower(h.ChildText("td.item-note"))
+			if !strings.Contains(desc, "fair") {
+				price := h.ChildText("span.results-price a")
+				price = strings.ReplaceAll(price, "A$", "")
+				price = strings.ReplaceAll(price, ",", "")
+				num, _ := strconv.ParseFloat(price, 64)
+				newnum := int(math.Ceil(num))
+				// fmt.Println(newnum)
+				if newnum != 0 {
+					if newnum <= book.PricePoint || book.OnlinePrice == 0 {
+						book.OnlinePrice = newnum
+					}
+				}
+			}
+		})
+	})
+	fmt.Println(book.Name)
+	fmt.Println(book.OnlinePrice)
+	results <- book
 
-// 	}
+	// ... (same as before) ...
+	// Update book data (book.PricePoint and book.OnlinePrice)
 
-// }
-
-// e.ForEach("tbody", func(i int, h *colly.HTMLElement) {
-// 	desc := h.ChildText("td.item-note")
-// 	// fmt.Println(desc)
-// if !strings.Contains(desc, "fair") {
-// 		price := h.ChildText(".results-price")
-// 		re := regexp.MustCompile(`\d+\.\d+`)
-// 		matches := re.FindAllString(price, -1)
-// 		// fmt.Println(matches)
-// 		for _, match := range matches {
-// 			// fmt.Println(match)
-// 			num, _ := strconv.ParseFloat(match, 64)
-// 			newnum := int(math.Ceil(num))
-// 			if newnum <= books[ind].PricePoint || books[ind].OnlinePrice == 0 {
-// 				books[ind].OnlinePrice = newnum
-// 			}
-// 			// fmt.Println(newnum)
-// 		}
-// 	}
-// })
-// })
-// if err := c.Visit(url); err != nil {
-// 	fmt.Println("Error:", err)
-// }
-// fmt.Println(books[ind].Name)
-// fmt.Println(books[ind].OnlinePrice)
-// fmt.Println(books[ind].PricePoint)
-// }
-// }
-
-// func main() {
-// 	books := getData()
-// 	for ind, book := range books {
-// 		url := book.SearchURL
-// 		c := colly.NewCollector()
-// 		c.OnRequest(func(r *colly.Request) {
-// 			fmt.Println("Visiting", r.URL)
-// 		})
-// 		c.OnResponse(func(r *colly.Response) {
-// 			fmt.Println("Got a response from", r.Request.URL)
-// 		})
-
-// 		c.OnHTML("body", func(e *colly.HTMLElement) {
-// 			e.ForEach("tbody", func(i int, h *colly.HTMLElement) {
-// 				desc := h.ChildText("td.item-note")
-// 				if !strings.Contains(desc, "fair") {
-// 					price := h.ChildText(".results-price")
-// 					re := regexp.MustCompile(`\d+\.\d+`)
-// 					matches := re.FindAllString(price, -1)
-// 					fmt.Println(matches)
-// 					for _, match := range matches {
-// 						fmt.Println(match)
-// 						num, _ := strconv.ParseFloat(match, 64)
-// 						newnum := int(math.Ceil(num))
-// 						if newnum <= books[ind].PricePoint || books[ind].OnlinePrice == 0 {
-// 							books[ind].OnlinePrice = newnum
-// 						}
-// 						// fmt.Println(newnum)
-// 					}
-// 				}
-// 			})
-// 		})
-// 		c.Visit(url)
-// 		// fmt.Println(books[ind].Name)
-// 		// fmt.Println(books[ind].OnlinePrice)
-// 		// fmt.Println(books[ind].PricePoint)
-// 	}
-// }
-
-// Perform scraping
-// func scrape(c *colly.Collector) {
-// 	c.SetRequestTimeout(30 * time.Second)
-// 	c.OnRequest(func(r *colly.Request) {
-// 		fmt.Println("Visiting", r.URL)
-// 	})
-
-// 	c.OnHTML("tbody", func(e *colly.HTMLElement) string {
-// 		numret := 0
-// 		// fmt.Println(e.ChildText("td.item-note"))
-// 		e.ForEach("tr", func(i int, h *colly.HTMLElement) {
-// 			desc := strings.ToLower(h.ChildText("td.item-note"))
-// 			if !strings.Contains(desc, "fair") {
-// 				price := h.ChildText("span.results-price a")
-// 				price = strings.ReplaceAll(price, "A$", "")
-// 				price = strings.ReplaceAll(price, ",", "")
-// 				num, _ := strconv.ParseFloat(price, 64)
-// 				newnum := int(math.Ceil(num))
-// 				if newnum
-// 			}
-// 		}
-// 	)})
+	if err := c.Visit(url); err != nil {
+		fmt.Println("Error:", err)
+	}
+	c.Wait()
+}
 
 // Retrieve a token, saves the token, then returns the generated client.
 func getClient(config *oauth2.Config) *http.Client {

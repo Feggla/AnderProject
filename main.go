@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 
 	"math"
-	"math/rand"
 	"net/http"
 	"os"
 
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gocolly/colly"
+	"github.com/mailgun/mailgun-go/v4"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -46,17 +47,23 @@ type Result struct {
 }
 
 var wg sync.WaitGroup
+var pub_api_key = "pubkey-a874664de1f2657f0f5e1bc673d3c897"
+var mailgun_api_key = "key-c652f3e23e6f6e0b6c09cc90bc6214ae"
+var mg_domain = "sandbox320af4e7f297428bb363cca4c5b1a624.mailgun.org"
 
 // func main() {
 // 	books := getData()
-// 	x := books[]
+// 	var mu sync.Mutex // Create a mutex
+// 	// x := books[]
 // 	for ind, book := range books {
 // 		url := book.SearchURL
 // 		c := colly.NewCollector()
 // 		c.SetRequestTimeout(30 * time.Second)
 // 		c.OnRequest(func(r *colly.Request) {
-// 			fmt.Println("Visiting", r.URL)
+// 			// fmt.Println("Visiting", r.URL)
 // 		})
+// 		mu.Lock()         // Lock the mutex before accessing shared data
+// 		defer mu.Unlock() // Unlock the mutex when the function exits
 
 // 		c.OnHTML("tbody", func(e *colly.HTMLElement) {
 // 			// fmt.Println(e.ChildText("td.item-note"))
@@ -67,9 +74,9 @@ var wg sync.WaitGroup
 // 					price = strings.ReplaceAll(price, "A$", "")
 // 					price = strings.ReplaceAll(price, ",", "")
 // 					num, _ := strconv.ParseFloat(price, 64)
-// 					fmt.Println(num)
+// 					// fmt.Println(num)
 // 					newnum := int(math.Ceil(num))
-// 					fmt.Println(newnum)
+// 					// fmt.Println(newnum)
 // 					if newnum != 0 && newnum <= books[ind].PricePoint || books[ind].OnlinePrice == 0 {
 // 						books[ind].PricePoint = newnum
 // 						books[ind].OnlinePrice = newnum
@@ -82,8 +89,13 @@ var wg sync.WaitGroup
 // 			fmt.Println("Error:", err)
 // 		}
 // 		c.Wait()
-// 		fmt.Println(books[ind].OnlinePrice)
-// 		fmt.Println(books[ind].Name)
+// 		mu.Lock()
+// 		// fmt.Println(books[ind].OnlinePrice)
+// 		// fmt.Println(books[ind].Name)
+// 		mu.Unlock()
+// 	}
+// 	for _, book := range books {
+// 		fmt.Println(book.Name, book.OnlinePrice)
 // 	}
 // }
 
@@ -107,7 +119,24 @@ func main() {
 	}
 }
 
+func SendSimpleMessage(domain, apiKey string, book string, price int) (string, error) {
+	mg := mailgun.NewMailgun(domain, apiKey)
+	from := "michaelfeggans@gmail.com"
+	to := "michaelfeggans@gmail.com"
+	subject := fmt.Sprintf("%s price alert", book)
+	text := fmt.Sprintf("Ander, the price of %s has dropped to %d!", book, price)
+	message := mg.NewMessage(from, subject, text, to)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	_, id, err := mg.Send(ctx, message)
+	fmt.Println(err)
+	return id, err
+}
+
 func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book) {
+	time.Sleep(time.Duration(rand.Intn(20)) * time.Second)
 	defer wg.Done()
 	userAgents := []string{
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -121,18 +150,38 @@ func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book) {
 		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Version/13.1.2 Safari/537.36",
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59",
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.66",
-		// Add more user agents as needed
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/12.246 Mozilla/5.0 (Windows NT 10.0; Win64; x64; Trident/7.0; AS; rv:11.0) like Gecko",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537",
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
+		"Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299",
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/603.3.8 (KHTML, like Gecko) Version/10.1.2 Safari/603.3.8",
+		"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0",
+		"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.101 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 YaBrowser/17.6.0.1633 Yowser/2.5 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36",
 	}
-	rand.Seed(time.Now().UnixNano())
 
 	url := book.SearchURL
 	c := colly.NewCollector()
 	randomUserAgent := userAgents[rand.Intn(len(userAgents))]
 	c.SetRequestTimeout(30 * time.Second)
+	c.UserAgent = randomUserAgent
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("Visiting", r.URL)
 		r.Headers.Set("User-Agent", randomUserAgent)
 	})
+	onlinePrice := book.OnlinePrice
 
 	c.OnHTML("tbody", func(e *colly.HTMLElement) {
 		// fmt.Println(e.ChildText("td.item-note"))
@@ -144,25 +193,26 @@ func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book) {
 				price = strings.ReplaceAll(price, ",", "")
 				num, _ := strconv.ParseFloat(price, 64)
 				newnum := int(math.Ceil(num))
-				// fmt.Println(newnum)
 				if newnum != 0 {
-					if newnum <= book.PricePoint || book.OnlinePrice == 0 {
-						book.OnlinePrice = newnum
+					// fmt.Println(newnum)
+					if newnum <= onlinePrice {
+						onlinePrice = newnum
+					}
+					if onlinePrice == 0 {
+						onlinePrice = newnum
 					}
 				}
 			}
 		})
 	})
-	fmt.Println(book.Name)
-	fmt.Println(book.OnlinePrice)
-	results <- book
-
-	// ... (same as before) ...
-	// Update book data (book.PricePoint and book.OnlinePrice)
-
 	if err := c.Visit(url); err != nil {
 		fmt.Println("Error:", err)
 	}
+	book.OnlinePrice = onlinePrice
+	if book.PricePoint >= onlinePrice && onlinePrice != 0 {
+		SendSimpleMessage(mg_domain, mailgun_api_key, book.Name, onlinePrice)
+	}
+	results <- book
 	c.Wait()
 }
 

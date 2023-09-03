@@ -51,54 +51,6 @@ var pub_api_key = "pubkey-a874664de1f2657f0f5e1bc673d3c897"
 var mailgun_api_key = "key-c652f3e23e6f6e0b6c09cc90bc6214ae"
 var mg_domain = "sandbox320af4e7f297428bb363cca4c5b1a624.mailgun.org"
 
-// func main() {
-// 	books := getData()
-// 	var mu sync.Mutex // Create a mutex
-// 	// x := books[]
-// 	for ind, book := range books {
-// 		url := book.SearchURL
-// 		c := colly.NewCollector()
-// 		c.SetRequestTimeout(30 * time.Second)
-// 		c.OnRequest(func(r *colly.Request) {
-// 			// fmt.Println("Visiting", r.URL)
-// 		})
-// 		mu.Lock()         // Lock the mutex before accessing shared data
-// 		defer mu.Unlock() // Unlock the mutex when the function exits
-
-// 		c.OnHTML("tbody", func(e *colly.HTMLElement) {
-// 			// fmt.Println(e.ChildText("td.item-note"))
-// 			e.ForEach("tr", func(i int, h *colly.HTMLElement) {
-// 				desc := strings.ToLower(h.ChildText("td.item-note"))
-// 				if !strings.Contains(desc, "fair") {
-// 					price := h.ChildText("span.results-price a")
-// 					price = strings.ReplaceAll(price, "A$", "")
-// 					price = strings.ReplaceAll(price, ",", "")
-// 					num, _ := strconv.ParseFloat(price, 64)
-// 					// fmt.Println(num)
-// 					newnum := int(math.Ceil(num))
-// 					// fmt.Println(newnum)
-// 					if newnum != 0 && newnum <= books[ind].PricePoint || books[ind].OnlinePrice == 0 {
-// 						books[ind].PricePoint = newnum
-// 						books[ind].OnlinePrice = newnum
-
-// 					}
-// 				}
-// 			})
-// 		})
-// 		if err := c.Visit(url); err != nil {
-// 			fmt.Println("Error:", err)
-// 		}
-// 		c.Wait()
-// 		mu.Lock()
-// 		// fmt.Println(books[ind].OnlinePrice)
-// 		// fmt.Println(books[ind].Name)
-// 		mu.Unlock()
-// 	}
-// 	for _, book := range books {
-// 		fmt.Println(book.Name, book.OnlinePrice)
-// 	}
-// }
-
 func main() {
 	books := getData()
 	var wg sync.WaitGroup
@@ -120,6 +72,16 @@ func main() {
 }
 
 func SendSimpleMessage(domain, apiKey string, book string, price int) (string, error) {
+	spreadsheetId := "16vBeSyQTR5IxyOmSi1GHyI-dYXWXShKxGbrg-W0CBLM"
+	writeRange := "DE Stats!A36"
+	var vr sheets.ValueRange
+	myval := []interface{}{"One", "blah"}
+	vr.Values = append(vr.Values, myval)
+	srv := startSpreadsheet()
+	_, err := srv.Spreadsheets.Values.Update(spreadsheetId, writeRange, &vr).ValueInputOption("RAW").Do()
+	if err != nil {
+		log.Fatalf("Unable to retrieve data from sheet. %v", err)
+	}
 	mg := mailgun.NewMailgun(domain, apiKey)
 	from := "michaelfeggans@gmail.com"
 	to := "michaelfeggans@gmail.com"
@@ -136,7 +98,7 @@ func SendSimpleMessage(domain, apiKey string, book string, price int) (string, e
 }
 
 func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book) {
-	time.Sleep(time.Duration(rand.Intn(20)) * time.Second)
+	time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
 	defer wg.Done()
 	userAgents := []string{
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -275,14 +237,12 @@ func saveToken(path string, token *oauth2.Token) {
 
 // }
 
-func getData() []Book {
-	var books []Book
+func startSpreadsheet() *sheets.Service {
 	ctx := context.Background()
 	b, err := os.ReadFile("credentials.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
-
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
 	if err != nil {
@@ -295,13 +255,18 @@ func getData() []Book {
 		log.Fatalf("Unable to retrieve Sheets client: %v", err)
 	}
 
+	return srv
+}
+
+func getData() []Book {
+	var books []Book
+	srv := startSpreadsheet()
 	spreadsheetId := "16vBeSyQTR5IxyOmSi1GHyI-dYXWXShKxGbrg-W0CBLM"
 	readRange := "Sheet1"
 	resp, err := srv.Spreadsheets.Values.Get(spreadsheetId, readRange).Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve data from sheet: %v", err)
 	}
-
 	values := resp.Values
 	// var results []string
 	for _, val := range values {
@@ -314,22 +279,3 @@ func getData() []Book {
 	}
 	return books
 }
-
-// fmt.Println(results)
-
-// for i, val := range resp.Values {
-// 	book.Name = val[i]
-// }
-
-// for i := 0; i < len(resp.Values); i++ {
-// 	book.Name = resp.Values[i][0]
-// 	book.SearchURL = resp.Values[i][1]
-// 	book.PricePoint = resp.Values[i][2]
-// 	books = append(books, book)
-// }
-
-// for _, row := range resp.Values {
-// 	&book.Name, &book.SearchURL, &book.PricePoint
-// 	books = append(books, book)
-
-// 	fmt.Println(books)

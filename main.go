@@ -22,8 +22,6 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
-	// "google.golang.org/grpc/credentials"
-	// "github.com/joho/godotenv"
 )
 
 type Book struct {
@@ -85,7 +83,7 @@ func SendSimpleMessage(domain, apiKey string, book string, price int) (string, e
 	_, id, err := mg.Send(ctx, message)
 	fmt.Println(err)
 	spreadsheetId := "16vBeSyQTR5IxyOmSi1GHyI-dYXWXShKxGbrg-W0CBLM"
-	writeRange := "DE Stats!A36"
+	writeRange := "Sheet1!A36"
 	var vr sheets.ValueRange
 	myval := []interface{}{"One", "blah"}
 	vr.Values = append(vr.Values, myval)

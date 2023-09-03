@@ -72,16 +72,6 @@ func main() {
 }
 
 func SendSimpleMessage(domain, apiKey string, book string, price int) (string, error) {
-	spreadsheetId := "16vBeSyQTR5IxyOmSi1GHyI-dYXWXShKxGbrg-W0CBLM"
-	writeRange := "DE Stats!A36"
-	var vr sheets.ValueRange
-	myval := []interface{}{"One", "blah"}
-	vr.Values = append(vr.Values, myval)
-	srv := startSpreadsheet()
-	_, err := srv.Spreadsheets.Values.Update(spreadsheetId, writeRange, &vr).ValueInputOption("RAW").Do()
-	if err != nil {
-		log.Fatalf("Unable to retrieve data from sheet. %v", err)
-	}
 	mg := mailgun.NewMailgun(domain, apiKey)
 	from := "michaelfeggans@gmail.com"
 	to := "michaelfeggans@gmail.com"
@@ -94,6 +84,16 @@ func SendSimpleMessage(domain, apiKey string, book string, price int) (string, e
 
 	_, id, err := mg.Send(ctx, message)
 	fmt.Println(err)
+	spreadsheetId := "16vBeSyQTR5IxyOmSi1GHyI-dYXWXShKxGbrg-W0CBLM"
+	writeRange := "DE Stats!A36"
+	var vr sheets.ValueRange
+	myval := []interface{}{"One", "blah"}
+	vr.Values = append(vr.Values, myval)
+	srv := startSpreadsheet()
+	_, err = srv.Spreadsheets.Values.Update(spreadsheetId, writeRange, &vr).ValueInputOption("RAW").Do()
+	if err != nil {
+		log.Fatalf("Unable to retrieve data from sheet. %v", err)
+	}
 	return id, err
 }
 
@@ -244,7 +244,7 @@ func startSpreadsheet() *sheets.Service {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
 	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
+	config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets")
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}

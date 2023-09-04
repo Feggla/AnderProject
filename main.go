@@ -57,7 +57,7 @@ func main() {
 	for _, book := range books {
 		wg.Add(1)
 		bookCopy := book
-		go scrapeBookData(&wg, bookCopy, results)
+		go scrapeBookData(&wg, bookCopy, results, books)
 	}
 
 	wg.Wait()
@@ -69,7 +69,7 @@ func main() {
 	}
 }
 
-func SendSimpleMessage(domain, apiKey string, book string, price int) (string, error) {
+func SendSimpleMessage(domain, apiKey string, book string, price int, books []Book) (string, error) {
 	mg := mailgun.NewMailgun(domain, apiKey)
 	from := "michaelfeggans@gmail.com"
 	to := "michaelfeggans@gmail.com"
@@ -82,10 +82,16 @@ func SendSimpleMessage(domain, apiKey string, book string, price int) (string, e
 
 	_, id, err := mg.Send(ctx, message)
 	fmt.Println(err)
+	index := 0
 	spreadsheetId := "16vBeSyQTR5IxyOmSi1GHyI-dYXWXShKxGbrg-W0CBLM"
-	writeRange := "Sheet1!A36"
+	for ind, val := range books {
+		if val.Name == book {
+			index = ind+1
+		}
+	}
+	writeRange := fmt.Sprintf("Sheet1!C%d", index)
 	var vr sheets.ValueRange
-	myval := []interface{}{"One", "blah"}
+	myval := []interface{}{price}
 	vr.Values = append(vr.Values, myval)
 	srv := startSpreadsheet()
 	_, err = srv.Spreadsheets.Values.Update(spreadsheetId, writeRange, &vr).ValueInputOption("RAW").Do()
@@ -95,7 +101,7 @@ func SendSimpleMessage(domain, apiKey string, book string, price int) (string, e
 	return id, err
 }
 
-func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book) {
+func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book, books []Book) {
 	time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
 	defer wg.Done()
 	userAgents := []string{
@@ -169,8 +175,8 @@ func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book) {
 		fmt.Println("Error:", err)
 	}
 	book.OnlinePrice = onlinePrice
-	if book.PricePoint >= onlinePrice && onlinePrice != 0 {
-		SendSimpleMessage(mg_domain, mailgun_api_key, book.Name, onlinePrice)
+	if book.PricePoint > onlinePrice && onlinePrice != 0 {
+		SendSimpleMessage(mg_domain, mailgun_api_key, book.Name, onlinePrice, books)
 	}
 	results <- book
 	c.Wait()

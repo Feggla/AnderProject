@@ -86,7 +86,7 @@ func SendSimpleMessage(domain, apiKey string, book string, price int, books []Bo
 	spreadsheetId := "16vBeSyQTR5IxyOmSi1GHyI-dYXWXShKxGbrg-W0CBLM"
 	for ind, val := range books {
 		if val.Name == book {
-			index = ind+1
+			index = ind + 1
 		}
 	}
 	writeRange := fmt.Sprintf("Sheet1!C%d", index)
@@ -102,7 +102,7 @@ func SendSimpleMessage(domain, apiKey string, book string, price int, books []Bo
 }
 
 func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book, books []Book) {
-	time.Sleep(time.Duration(rand.Intn(120)) * time.Second)
+	time.Sleep(time.Duration(rand.Intn(15)) * time.Second)
 	defer wg.Done()
 	userAgents := []string{
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",

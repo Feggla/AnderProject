@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/gocolly/colly v1.2.0
+	github.com/joho/godotenv v1.5.1
 	github.com/mailgun/mailgun-go/v4 v4.11.0
 	golang.org/x/oauth2 v0.9.0
 	google.golang.org/api v0.129.0

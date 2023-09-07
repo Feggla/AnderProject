@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gocolly/colly"
+	"github.com/joho/godotenv"
 	"github.com/mailgun/mailgun-go/v4"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -45,11 +46,15 @@ type Result struct {
 }
 
 var wg sync.WaitGroup
-var pub_api_key = "pubkey-a874664de1f2657f0f5e1bc673d3c897"
-var mailgun_api_key = "key-c652f3e23e6f6e0b6c09cc90bc6214ae"
-var mg_domain = "sandbox320af4e7f297428bb363cca4c5b1a624.mailgun.org"
+var pub_api_key = os.Getenv("mg_pub_key")
+var mailgun_api_key = os.Getenv("mg_api_key")
+var mg_domain = os.Getenv("mg_domain")
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	books := getData()
 	var wg sync.WaitGroup
 	results := make(chan Book, len(books))
@@ -71,19 +76,19 @@ func main() {
 
 func SendSimpleMessage(domain, apiKey string, book string, price int, books []Book) (string, error) {
 	mg := mailgun.NewMailgun(domain, apiKey)
-	from := "michaelfeggans@gmail.com"
-	to := "michaelfeggans@gmail.com"
+	from := os.Getenv("my_email")
 	subject := fmt.Sprintf("%s price alert", book)
 	text := fmt.Sprintf("Ander, the price of %s has dropped to %d!", book, price)
-	message := mg.NewMessage(from, subject, text, to)
-
+	message := mg.NewMessage(from, subject, text)
+	message.AddRecipient(os.Getenv("recipient_1"))
+	message.AddRecipient(os.Getenv("recipient_2"))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	_, id, err := mg.Send(ctx, message)
 	fmt.Println(err)
 	index := 0
-	spreadsheetId := "16vBeSyQTR5IxyOmSi1GHyI-dYXWXShKxGbrg-W0CBLM"
+	spreadsheetId := os.Getenv("spreadsheet_id")
 	for ind, val := range books {
 		if val.Name == book {
 			index = ind + 1
@@ -265,7 +270,7 @@ func startSpreadsheet() *sheets.Service {
 func getData() []Book {
 	var books []Book
 	srv := startSpreadsheet()
-	spreadsheetId := "16vBeSyQTR5IxyOmSi1GHyI-dYXWXShKxGbrg-W0CBLM"
+	spreadsheetId := os.Getenv("spreadsheet_id")
 	readRange := "Sheet1"
 	resp, err := srv.Spreadsheets.Values.Get(spreadsheetId, readRange).Do()
 	if err != nil {

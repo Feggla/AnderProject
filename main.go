@@ -53,7 +53,7 @@ var mg_domain = os.Getenv("mg_domain")
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Print("Error loading .env file")
 	}
 	books := getData()
 	var wg sync.WaitGroup

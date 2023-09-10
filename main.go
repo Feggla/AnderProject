@@ -74,11 +74,11 @@ func main() {
 	}
 }
 
-func SendSimpleMessage(domain, apiKey string, book string, price int, books []Book) (string, error) {
+func SendSimpleMessage(domain, apiKey string, book string, url string, price int, books []Book) (string, error) {
 	mg := mailgun.NewMailgun(domain, apiKey)
 	from := os.Getenv("my_email")
 	subject := fmt.Sprintf("%s price alert", book)
-	text := fmt.Sprintf("Ander, the price of %s has dropped to %d!", book, price)
+	text := fmt.Sprintf("Ander, the price of %s has dropped to %d! \n\nCheck the link: %s", book, price, url)
 	message := mg.NewMessage(from, subject, text)
 	message.AddRecipient(os.Getenv("recipient_1"))
 	message.AddRecipient(os.Getenv("recipient_2"))
@@ -181,7 +181,7 @@ func scrapeBookData(wg *sync.WaitGroup, book Book, results chan<- Book, books []
 	}
 	book.OnlinePrice = onlinePrice
 	if book.PricePoint > onlinePrice && onlinePrice != 0 {
-		SendSimpleMessage(mg_domain, mailgun_api_key, book.Name, onlinePrice, books)
+		SendSimpleMessage(mg_domain, mailgun_api_key, book.Name, book.SearchURL, onlinePrice, books)
 	}
 	results <- book
 	c.Wait()

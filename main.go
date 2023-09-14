@@ -195,8 +195,12 @@ func getClient(config *oauth2.Config) *http.Client {
 	tokFile := "token.json"
 	tok, err := tokenFromFile(tokFile)
 	if err != nil {
-		tok = getTokenFromWeb(config)
-		saveToken(tokFile, tok)
+		token := new(oauth2.Token)
+		token.AccessToken = os.Getenv("access_token")
+		token.RefreshToken = os.Getenv("refresh_token")
+		token.Expiry = tok.Expiry
+		token.TokenType = tok.TokenType
+		return config.Client(context.Background(), token)
 	}
 	return config.Client(context.Background(), tok)
 }
